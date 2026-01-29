@@ -1,0 +1,1283 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Cessna 152 - Aircraft Hazard Identification Module</title>
+    <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Rajdhani:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Rajdhani', sans-serif;
+            background: linear-gradient(135deg, #0a1628 0%, #0d2137 100%);
+            color: #e0e0e0;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 15px;
+        }
+
+        .header {
+            text-align: center;
+            padding: 15px;
+            border-bottom: 2px solid #1e5a96;
+            margin-bottom: 15px;
+        }
+
+        .header h1 {
+            font-family: 'Share Tech Mono', monospace;
+            font-size: clamp(1.1rem, 3vw, 1.6rem);
+            color: #4da6ff;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            text-shadow: 0 0 20px rgba(77, 166, 255, 0.5);
+        }
+
+        .header p {
+            margin-top: 5px;
+            color: #7ab8ed;
+            font-size: 0.9rem;
+        }
+
+        .aircraft-badge {
+            display: inline-block;
+            background: rgba(77, 166, 255, 0.2);
+            border: 1px solid #4da6ff;
+            border-radius: 20px;
+            padding: 4px 12px;
+            margin-top: 8px;
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 0.8rem;
+            color: #4da6ff;
+        }
+
+        .specs-bar {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            flex-wrap: wrap;
+            background: rgba(30, 90, 150, 0.1);
+            border: 1px solid #1e5a96;
+            border-radius: 8px;
+            padding: 10px 15px;
+            margin-bottom: 15px;
+        }
+
+        .spec-item {
+            text-align: center;
+        }
+
+        .spec-item .label {
+            font-size: 0.7rem;
+            color: #7ab8ed;
+            text-transform: uppercase;
+        }
+
+        .spec-item .value {
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 0.9rem;
+            color: #4da6ff;
+        }
+
+        .instructions {
+            background: rgba(30, 90, 150, 0.15);
+            border: 1px solid #1e5a96;
+            border-radius: 8px;
+            padding: 10px 15px;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+
+        .instructions p {
+            color: #a0c4e8;
+            font-size: 0.85rem;
+        }
+
+        .controls-hint {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            flex-wrap: wrap;
+            margin-top: 8px;
+        }
+
+        .hint-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 0.8rem;
+            color: #7ab8ed;
+        }
+
+        .hint-icon {
+            width: 22px;
+            height: 22px;
+            background: rgba(77, 166, 255, 0.2);
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.7rem;
+        }
+
+        .viewer-container {
+            position: relative;
+            width: 100%;
+            height: 400px;
+            background: rgba(10, 22, 40, 0.9);
+            border: 2px solid #1e5a96;
+            border-radius: 12px;
+            overflow: hidden;
+            margin-bottom: 15px;
+        }
+
+        #canvas3d {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+
+        .part-label-3d {
+            position: absolute;
+            background: rgba(10, 30, 50, 0.95);
+            border: 1px solid #4da6ff;
+            border-radius: 6px;
+            padding: 6px 10px;
+            pointer-events: none;
+            display: none;
+            z-index: 100;
+            max-width: 180px;
+        }
+
+        .part-label-3d h4 {
+            font-family: 'Share Tech Mono', monospace;
+            color: #4da6ff;
+            font-size: 0.8rem;
+            margin-bottom: 2px;
+        }
+
+        .part-label-3d p {
+            color: #a0c4e8;
+            font-size: 0.7rem;
+        }
+
+        .legend {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 8px;
+            margin-bottom: 15px;
+        }
+
+        .legend-item {
+            background: rgba(30, 90, 150, 0.15);
+            border: 1px solid #1e5a96;
+            border-radius: 6px;
+            padding: 8px 10px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-align: center;
+        }
+
+        .legend-item:hover {
+            background: rgba(30, 90, 150, 0.3);
+            border-color: #4da6ff;
+        }
+
+        .legend-item.active {
+            background: rgba(77, 166, 255, 0.2);
+            border-color: #4da6ff;
+        }
+
+        .legend-item span {
+            font-family: 'Share Tech Mono', monospace;
+            color: #7ab8ed;
+            font-size: 0.7rem;
+        }
+
+        .info-panel {
+            background: rgba(10, 22, 40, 0.9);
+            border: 2px solid #1e5a96;
+            border-radius: 12px;
+            padding: 15px;
+            display: none;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .info-panel.active {
+            display: block;
+        }
+
+        .info-panel h2 {
+            font-family: 'Share Tech Mono', monospace;
+            color: #4da6ff;
+            font-size: 1.1rem;
+            margin-bottom: 12px;
+            text-transform: uppercase;
+        }
+
+        .info-section {
+            margin-bottom: 12px;
+        }
+
+        .info-section h3 {
+            color: #4da6ff;
+            font-size: 0.95rem;
+            margin-bottom: 6px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .info-section h3::before {
+            content: '';
+            width: 3px;
+            height: 14px;
+            background: #4da6ff;
+            border-radius: 2px;
+        }
+
+        .info-section p {
+            color: #c0d8f0;
+            line-height: 1.5;
+            font-size: 0.9rem;
+        }
+
+        .info-section ul {
+            list-style: none;
+            padding: 0;
+        }
+
+        .info-section ul li {
+            color: #c0d8f0;
+            padding: 4px 0;
+            padding-left: 15px;
+            position: relative;
+            font-size: 0.85rem;
+        }
+
+        .info-section ul li::before {
+            content: '▸';
+            position: absolute;
+            left: 0;
+            color: #4da6ff;
+        }
+
+        .hazard-section {
+            background: rgba(255, 77, 77, 0.1);
+            border: 1px solid #ff4d4d;
+            border-radius: 8px;
+            padding: 12px;
+        }
+
+        .hazard-section h3 {
+            color: #ff4d4d;
+        }
+
+        .hazard-section h3::before {
+            background: #ff4d4d;
+        }
+
+        .hazard-section ul li::before {
+            color: #ff4d4d;
+        }
+
+        .close-info {
+            background: none;
+            border: 1px solid #4da6ff;
+            color: #4da6ff;
+            padding: 6px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-family: 'Rajdhani', sans-serif;
+            font-size: 0.85rem;
+            margin-top: 10px;
+            transition: all 0.3s ease;
+        }
+
+        .close-info:hover {
+            background: #4da6ff;
+            color: #0a1628;
+        }
+
+        .zoom-controls {
+            position: absolute;
+            bottom: 10px;
+            right: 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            z-index: 50;
+        }
+
+        .zoom-btn {
+            width: 32px;
+            height: 32px;
+            background: rgba(10, 30, 50, 0.9);
+            border: 1px solid #4da6ff;
+            border-radius: 6px;
+            color: #4da6ff;
+            font-size: 1.1rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .zoom-btn:hover {
+            background: rgba(77, 166, 255, 0.2);
+        }
+
+        .reset-btn {
+            position: absolute;
+            bottom: 10px;
+            left: 10px;
+            background: rgba(10, 30, 50, 0.9);
+            border: 1px solid #4da6ff;
+            border-radius: 6px;
+            color: #4da6ff;
+            padding: 6px 10px;
+            font-size: 0.75rem;
+            cursor: pointer;
+            z-index: 50;
+            font-family: 'Share Tech Mono', monospace;
+        }
+
+        .reset-btn:hover {
+            background: rgba(77, 166, 255, 0.2);
+        }
+
+        .footer {
+            text-align: center;
+            padding: 15px;
+            border-top: 1px solid #1e5a96;
+            margin-top: 20px;
+        }
+
+        .footer p {
+            color: #5a8bb8;
+            font-size: 0.8rem;
+        }
+
+        @media (max-width: 768px) {
+            .viewer-container {
+                height: 320px;
+            }
+            .specs-bar {
+                gap: 10px;
+            }
+            .legend {
+                grid-template-columns: repeat(3, 1fr);
+            }
+        }
+
+        @media (max-width: 480px) {
+            .legend {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <h1>✈ 3D Aircraft Hazard Identification Module</h1>
+            <p>Interactive Safety Learning System</p>
+            <div class="aircraft-badge">CESSNA 152</div>
+        </header>
+
+        <div class="specs-bar">
+            <div class="spec-item">
+                <div class="label">Wingspan</div>
+                <div class="value">33 ft 4 in</div>
+            </div>
+            <div class="spec-item">
+                <div class="label">Length</div>
+                <div class="value">24 ft 1 in</div>
+            </div>
+            <div class="spec-item">
+                <div class="label">Height</div>
+                <div class="value">8 ft 6 in</div>
+            </div>
+            <div class="spec-item">
+                <div class="label">Engine</div>
+                <div class="value">Lycoming O-235</div>
+            </div>
+            <div class="spec-item">
+                <div class="label">Horsepower</div>
+                <div class="value">110 HP</div>
+            </div>
+        </div>
+
+        <div class="instructions">
+            <p>Explore the 3D aircraft by rotating, zooming, and clicking on parts to learn about hazards.</p>
+            <div class="controls-hint">
+                <div class="hint-item">
+                    <div class="hint-icon">👆</div>
+                    <span>Drag to rotate</span>
+                </div>
+                <div class="hint-item">
+                    <div class="hint-icon">🔍</div>
+                    <span>Pinch/Scroll zoom</span>
+                </div>
+                <div class="hint-item">
+                    <div class="hint-icon">👇</div>
+                    <span>Click for info</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="viewer-container">
+            <canvas id="canvas3d"></canvas>
+            <div class="part-label-3d" id="hoverLabel">
+                <h4>Part Name</h4>
+                <p>Click for details</p>
+            </div>
+            <div class="zoom-controls">
+                <button class="zoom-btn" id="zoomIn">+</button>
+                <button class="zoom-btn" id="zoomOut">−</button>
+            </div>
+            <button class="reset-btn" id="resetView">↺ Reset</button>
+        </div>
+
+        <div class="legend">
+            <div class="legend-item" data-part="propeller" onclick="showInfo('propeller')">
+                <span>01 PROPELLER</span>
+            </div>
+            <div class="legend-item" data-part="engine" onclick="showInfo('engine')">
+                <span>02 ENGINE</span>
+            </div>
+            <div class="legend-item" data-part="fuselage" onclick="showInfo('fuselage')">
+                <span>03 FUSELAGE</span>
+            </div>
+            <div class="legend-item" data-part="wing" onclick="showInfo('wing')">
+                <span>04 WINGS</span>
+            </div>
+            <div class="legend-item" data-part="strut" onclick="showInfo('strut')">
+                <span>05 WING STRUTS</span>
+            </div>
+            <div class="legend-item" data-part="tail" onclick="showInfo('tail')">
+                <span>06 EMPENNAGE</span>
+            </div>
+            <div class="legend-item" data-part="landinggear" onclick="showInfo('landinggear')">
+                <span>07 LANDING GEAR</span>
+            </div>
+            <div class="legend-item" data-part="cockpit" onclick="showInfo('cockpit')">
+                <span>08 COCKPIT</span>
+            </div>
+        </div>
+
+        <div class="info-panel" id="infoPanel">
+            <h2 id="infoTitle">Part Name</h2>
+            <div class="info-section">
+                <h3>Description</h3>
+                <p id="infoDescription"></p>
+            </div>
+            <div class="info-section">
+                <h3>Components</h3>
+                <ul id="infoComponents"></ul>
+            </div>
+            <div class="info-section hazard-section">
+                <h3>⚠ Safety Hazards</h3>
+                <ul id="infoHazards"></ul>
+            </div>
+            <button class="close-info" onclick="closeInfo()">Close</button>
+        </div>
+
+        <footer class="footer">
+            <p>3D Interactive Aircraft Hazard Identification Module</p>
+            <p>BSAMT Thesis Project — National Aviation Academy of the Philippines</p>
+        </footer>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+        // Complete Cessna 152 Parts Data
+        const partsData = {
+            propeller: {
+                title: "Propeller Assembly",
+                description: "The Cessna 152 uses a McCauley or Sensenich fixed-pitch, two-blade aluminum alloy propeller. It converts engine power into thrust by accelerating air rearward. The propeller is directly attached to the engine crankshaft.",
+                components: [
+                    "Propeller blades (2)",
+                    "Propeller hub",
+                    "Spinner and spinner bulkhead",
+                    "Blade tips",
+                    "Leading and trailing edges",
+                    "Propeller bolts and nuts"
+                ],
+                hazards: [
+                    "FATAL STRIKE ZONE — Rotating propeller is invisible at speed. Always assume prop could move. Stay clear of arc.",
+                    "HAND PROPPING DANGER — Manual starting can cause sudden rotation. Only trained personnel should hand prop.",
+                    "BLADE EDGE CUTS — Even stationary blades have sharp leading edges. Handle with care during inspection.",
+                    "PROP WASH — Engine run-up creates powerful thrust. Secure loose objects, protect eyes and ears.",
+                    "CARBON FIBER RISKS — If equipped with composite prop, damaged blades release hazardous fibers."
+                ]
+            },
+            engine: {
+                title: "Engine (Lycoming O-235)",
+                description: "The Cessna 152 is powered by a Lycoming O-235-L2C, a four-cylinder, horizontally opposed, air-cooled engine producing 110 horsepower at 2,550 RPM. It uses a carburetor for fuel-air mixture.",
+                components: [
+                    "Cylinders and pistons (4)",
+                    "Crankshaft and crankcase",
+                    "Carburetor and air filter",
+                    "Magnetos (2) and spark plugs (8)",
+                    "Oil sump and oil cooler",
+                    "Exhaust system and muffler",
+                    "Engine mount and cowling"
+                ],
+                hazards: [
+                    "HOT SURFACES — Cylinders and exhaust exceed 400°F during/after operation. Severe burn risk.",
+                    "ROTATING PARTS — Propeller, alternator belt, and cooling fan can cause entanglement injuries.",
+                    "FUEL HAZARDS — Avgas is highly flammable. No smoking within 50 feet. Check for leaks.",
+                    "CARBON MONOXIDE — Exhaust contains deadly CO gas. Never run engine in enclosed space.",
+                    "MAGNETO HAZARD — Magnetos generate spark independent of battery. Prop can fire even with master off.",
+                    "OIL HAZARDS — Hot oil causes burns. Used oil contains carcinogens. Wear proper PPE."
+                ]
+            },
+            fuselage: {
+                title: "Fuselage Structure",
+                description: "The fuselage is the main body of the Cessna 152, constructed using semi-monocoque aluminum design. It houses the cockpit, provides attachment for wings and empennage, and protects occupants.",
+                components: [
+                    "Forward fuselage section",
+                    "Cabin section with doors",
+                    "Aft fuselage section",
+                    "Firewall (engine compartment barrier)",
+                    "Bulkheads and stringers",
+                    "Aluminum skin panels",
+                    "Floor structure and seat rails"
+                ],
+                hazards: [
+                    "SHARP METAL EDGES — Sheet metal seams, inspection panels, and rivets can cause cuts.",
+                    "CONFINED SPACE — Limited room for maintenance. Risk of bumping head, awkward positions.",
+                    "ELECTRICAL SYSTEMS — Wiring runs throughout fuselage. Risk of shock or short circuit.",
+                    "CONTROL CABLES — Cables route through fuselage. Pinch points and tension hazards.",
+                    "DOOR OPERATION — Doors can slam in wind. Keep hands clear of hinges and latches.",
+                    "FIREWALL PENETRATION — Improper sealing allows fire/fumes into cabin."
+                ]
+            },
+            wing: {
+                title: "Wing Assembly",
+                description: "The Cessna 152 features high-mounted, strut-braced wings with a NACA 2412 airfoil. Each wing contains an integral fuel tank (13 gallons), flap, and aileron. Total wingspan is 33 feet 4 inches.",
+                components: [
+                    "Main spar and rear spar",
+                    "Wing ribs",
+                    "Wing skin (upper and lower)",
+                    "Integral fuel tanks (26 gal total)",
+                    "Ailerons with hinges",
+                    "Flaps with actuator",
+                    "Wing tips and position lights",
+                    "Fuel filler caps and vents"
+                ],
+                hazards: [
+                    "FUEL HAZARDS — Wings contain fuel. No sparks, proper grounding required before fueling.",
+                    "FALL FROM HEIGHT — Working on high-wing requires ladder. Fall protection needed.",
+                    "STATIC ELECTRICITY — Wing skin accumulates static. Ground aircraft before fueling.",
+                    "CONTROL SURFACE MOVEMENT — Ailerons and flaps can move unexpectedly. Keep hands clear.",
+                    "WALKING ON WING — Only step on designated walk areas. Stepping elsewhere dents skin.",
+                    "FUEL VAPOR — Fuel vapors accumulate in tanks. Ensure ventilation before tank entry."
+                ]
+            },
+            strut: {
+                title: "Wing Struts",
+                description: "The wing struts are diagonal braces connecting each wing to the lower fuselage. They carry flight loads (tension) and ground loads (compression), providing critical structural support for the high-wing design.",
+                components: [
+                    "Strut tube (streamlined aluminum)",
+                    "Upper fitting (wing attachment)",
+                    "Lower fitting (fuselage attachment)",
+                    "Strut fairings",
+                    "Attach bolts and bushings",
+                    "Jury strut (connects to main strut)"
+                ],
+                hazards: [
+                    "STRUCTURAL CRITICAL — Any damage compromises wing integrity. Never drill or modify strut.",
+                    "INTERNAL CORROSION — Corrosion inside strut not visible. Requires periodic inspection.",
+                    "BOLT TORQUE — Incorrect torque causes wear or failure. Use calibrated torque wrench.",
+                    "FAIRING REMOVAL — Sharp edges underneath. Wear gloves when servicing.",
+                    "JURY STRUT TENSION — Jury strut under load. Can snap if improperly removed.",
+                    "GROUND EQUIPMENT — Struts easily damaged by tugs and carts. Maintain clearance."
+                ]
+            },
+            tail: {
+                title: "Empennage (Tail Section)",
+                description: "The empennage provides stability and control. It consists of the vertical stabilizer with rudder (yaw control) and horizontal stabilizer with elevator (pitch control). A trim tab on the elevator allows hands-off flight.",
+                components: [
+                    "Vertical stabilizer (fin)",
+                    "Rudder with hinges",
+                    "Horizontal stabilizer",
+                    "Elevator with hinges",
+                    "Elevator trim tab",
+                    "Control horns and cables",
+                    "Tail tie-down ring",
+                    "Navigation and beacon lights"
+                ],
+                hazards: [
+                    "CONTROL MOVEMENT — Rudder and elevator can move suddenly from wind or pilot input.",
+                    "WORKING AT HEIGHT — Vertical stabilizer requires ladder access. Fall hazard.",
+                    "TRIM TAB DAMAGE — Small trim tab is fragile. Mishandling affects controllability.",
+                    "CABLE TENSION — Control cables under significant tension. Can snap or pinch.",
+                    "TIE-DOWN STRESS — Improper tie-down in wind can overstress and damage tail.",
+                    "LIGHTNING STRIKE — Tail often takes lightning strikes. Inspect after storms."
+                ]
+            },
+            landinggear: {
+                title: "Landing Gear System",
+                description: "The Cessna 152 uses a fixed tricycle landing gear with a steerable nose wheel and two main wheels. Main gear uses tubular steel spring design. Cleveland single-disc brakes are on the main wheels.",
+                components: [
+                    "Nose gear strut and fork",
+                    "Nose wheel and tire",
+                    "Main gear legs (spring steel)",
+                    "Main wheels and tires",
+                    "Brake discs and calipers",
+                    "Brake master cylinders",
+                    "Wheel fairings (optional)",
+                    "Shimmy dampener (nose gear)"
+                ],
+                hazards: [
+                    "CRUSHING HAZARD — Never place body under aircraft without proper jacking and stands.",
+                    "TIRE PRESSURE — Over-inflation can cause explosive failure. Check pressure carefully.",
+                    "HOT BRAKES — Brakes extremely hot after heavy use. Wait before touching.",
+                    "BRAKE FLUID — Hydraulic fluid is toxic. Avoid skin contact, clean spills immediately.",
+                    "SPRING STEEL ENERGY — Main gear legs store energy. Can spring back if deflected.",
+                    "WHEEL CHOCKS — Unchocked aircraft can roll. Always chock before maintenance.",
+                    "JACK FAILURE — Hydraulic jacks can fail. Always use backup stands."
+                ]
+            },
+            cockpit: {
+                title: "Cockpit / Flight Deck",
+                description: "The cockpit accommodates two occupants side-by-side with dual controls. It contains the instrument panel, avionics, engine controls, and circuit breakers. Entry is through doors on each side.",
+                components: [
+                    "Instrument panel and avionics",
+                    "Control yokes (dual)",
+                    "Rudder pedals (dual)",
+                    "Throttle, mixture, carb heat controls",
+                    "Flap lever",
+                    "Trim wheel",
+                    "Circuit breaker panel",
+                    "Seats and harnesses",
+                    "Cabin doors and windows"
+                ],
+                hazards: [
+                    "ELECTRICAL SHOCK — Instrument panel contains live circuits. Disconnect battery before work.",
+                    "CONTROL INTERFERENCE — Loose objects can jam controls. Keep cockpit FOD-free.",
+                    "SEAT RAIL FAILURE — Improperly locked seats can slide during flight. Verify locks.",
+                    "DOOR OPENING IN FLIGHT — Unlatched door can open. Verify secure before takeoff.",
+                    "CARBON MONOXIDE — Cabin heat uses exhaust shroud. CO detector recommended.",
+                    "EGRESS EMERGENCY — Know door operation for emergency exit. Don't block exits.",
+                    "AVIONICS DAMAGE — Static discharge can damage electronics. Ground yourself first."
+                ]
+            }
+        };
+
+        // Three.js setup
+        let scene, camera, renderer;
+        let parts = {};
+        let isRotating = false;
+        let previousMousePosition = { x: 0, y: 0 };
+        let currentRotation = { x: 0, y: 0 };
+        let cameraDistance = 8;
+        let raycaster, mouse;
+
+        function init() {
+            const container = document.getElementById('canvas3d');
+            const width = container.clientWidth;
+            const height = container.clientHeight;
+
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x0a1628);
+
+            camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 1000);
+            camera.position.set(5, 3, 8);
+            camera.lookAt(0, 0, 0);
+
+            renderer = new THREE.WebGLRenderer({ canvas: container, antialias: true });
+            renderer.setSize(width, height);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+
+            raycaster = new THREE.Raycaster();
+            mouse = new THREE.Vector2();
+
+            // Lighting
+            const ambientLight = new THREE.AmbientLight(0x4da6ff, 0.5);
+            scene.add(ambientLight);
+
+            const mainLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            mainLight.position.set(5, 8, 5);
+            scene.add(mainLight);
+
+            const fillLight = new THREE.DirectionalLight(0x4da6ff, 0.4);
+            fillLight.position.set(-5, 3, -5);
+            scene.add(fillLight);
+
+            const bottomLight = new THREE.DirectionalLight(0x4da6ff, 0.2);
+            bottomLight.position.set(0, -5, 0);
+            scene.add(bottomLight);
+
+            createCessna152();
+
+            const gridHelper = new THREE.GridHelper(20, 40, 0x1e5a96, 0x0d2137);
+            gridHelper.position.y = -2;
+            scene.add(gridHelper);
+
+            // Event listeners
+            container.addEventListener('mousedown', onMouseDown);
+            container.addEventListener('mousemove', onMouseMove);
+            container.addEventListener('mouseup', onMouseUp);
+            container.addEventListener('mouseleave', onMouseUp);
+            container.addEventListener('wheel', onWheel);
+            container.addEventListener('click', onClick);
+
+            container.addEventListener('touchstart', onTouchStart);
+            container.addEventListener('touchmove', onTouchMove);
+            container.addEventListener('touchend', onTouchEnd);
+
+            document.getElementById('zoomIn').addEventListener('click', () => {
+                cameraDistance = Math.max(4, cameraDistance - 0.7);
+                updateCamera();
+            });
+            document.getElementById('zoomOut').addEventListener('click', () => {
+                cameraDistance = Math.min(15, cameraDistance + 0.7);
+                updateCamera();
+            });
+            document.getElementById('resetView').addEventListener('click', resetView);
+
+            window.addEventListener('resize', onResize);
+
+            animate();
+        }
+
+        function createCessna152() {
+            const aircraft = new THREE.Group();
+            const wireMaterial = new THREE.LineBasicMaterial({ color: 0x4da6ff, transparent: true, opacity: 0.6 });
+
+            // Materials
+            const fuselageMat = new THREE.MeshPhongMaterial({ color: 0x2d5a7b, shininess: 60 });
+            const wingMat = new THREE.MeshPhongMaterial({ color: 0x1a4a6e, shininess: 50, transparent: true, opacity: 0.9 });
+            const engineMat = new THREE.MeshPhongMaterial({ color: 0x3a7ca5, shininess: 80 });
+            const propMat = new THREE.MeshPhongMaterial({ color: 0x4a90b0, shininess: 90 });
+            const tailMat = new THREE.MeshPhongMaterial({ color: 0x2a6080, shininess: 60 });
+            const strutMat = new THREE.MeshPhongMaterial({ color: 0x3d7a9e, shininess: 70 });
+            const gearMat = new THREE.MeshPhongMaterial({ color: 0x1a3a5c, shininess: 40 });
+            const cockpitMat = new THREE.MeshPhongMaterial({ color: 0x5ba3c0, shininess: 100, transparent: true, opacity: 0.7 });
+
+            // ===== FUSELAGE =====
+            const fuselageGroup = new THREE.Group();
+            
+            // Main body
+            const fuselageGeo = new THREE.CylinderGeometry(0.5, 0.4, 4.5, 12);
+            const fuselage = new THREE.Mesh(fuselageGeo, fuselageMat);
+            fuselage.rotation.z = Math.PI / 2;
+            fuselage.position.set(0, 0, 0);
+            fuselage.userData = { name: 'fuselage' };
+            fuselageGroup.add(fuselage);
+            parts.fuselage = fuselage;
+
+            // Nose cone
+            const noseGeo = new THREE.ConeGeometry(0.4, 0.8, 12);
+            const nose = new THREE.Mesh(noseGeo, fuselageMat);
+            nose.rotation.z = -Math.PI / 2;
+            nose.position.set(2.6, 0, 0);
+            nose.userData = { name: 'fuselage' };
+            fuselageGroup.add(nose);
+
+            // Tail cone
+            const tailConeGeo = new THREE.ConeGeometry(0.4, 1.5, 12);
+            const tailCone = new THREE.Mesh(tailConeGeo, fuselageMat);
+            tailCone.rotation.z = Math.PI / 2;
+            tailCone.position.set(-2.9, 0, 0);
+            tailCone.userData = { name: 'fuselage' };
+            fuselageGroup.add(tailCone);
+
+            // Fuselage wireframe
+            const fuselageWire = new THREE.LineSegments(new THREE.EdgesGeometry(fuselageGeo), wireMaterial);
+            fuselageWire.rotation.copy(fuselage.rotation);
+            fuselageWire.position.copy(fuselage.position);
+            fuselageGroup.add(fuselageWire);
+
+            aircraft.add(fuselageGroup);
+
+            // ===== COCKPIT / WINDSHIELD =====
+            const cockpitGeo = new THREE.SphereGeometry(0.45, 12, 8, 0, Math.PI * 2, 0, Math.PI / 2);
+            const cockpit = new THREE.Mesh(cockpitGeo, cockpitMat);
+            cockpit.position.set(1, 0.35, 0);
+            cockpit.scale.set(1.5, 0.8, 1.2);
+            cockpit.userData = { name: 'cockpit' };
+            parts.cockpit = cockpit;
+            aircraft.add(cockpit);
+
+            const cockpitWire = new THREE.LineSegments(new THREE.EdgesGeometry(cockpitGeo), wireMaterial);
+            cockpitWire.position.copy(cockpit.position);
+            cockpitWire.scale.copy(cockpit.scale);
+            aircraft.add(cockpitWire);
+
+            // ===== ENGINE COWLING =====
+            const engineGroup = new THREE.Group();
+            
+            const engineGeo = new THREE.CylinderGeometry(0.45, 0.5, 1.2, 12);
+            const engine = new THREE.Mesh(engineGeo, engineMat);
+            engine.rotation.z = Math.PI / 2;
+            engine.position.set(2.5, 0, 0);
+            engine.userData = { name: 'engine' };
+            engineGroup.add(engine);
+            parts.engine = engine;
+
+            // Air intake
+            const intakeGeo = new THREE.BoxGeometry(0.3, 0.2, 0.4);
+            const intake = new THREE.Mesh(intakeGeo, engineMat);
+            intake.position.set(2.4, -0.35, 0);
+            intake.userData = { name: 'engine' };
+            engineGroup.add(intake);
+
+            const engineWire = new THREE.LineSegments(new THREE.EdgesGeometry(engineGeo), wireMaterial);
+            engineWire.rotation.copy(engine.rotation);
+            engineWire.position.copy(engine.position);
+            engineGroup.add(engineWire);
+
+            aircraft.add(engineGroup);
+
+            // ===== PROPELLER =====
+            const propGroup = new THREE.Group();
+            
+            // Hub
+            const hubGeo = new THREE.ConeGeometry(0.15, 0.3, 12);
+            const hub = new THREE.Mesh(hubGeo, propMat);
+            hub.rotation.z = -Math.PI / 2;
+            hub.position.set(3.25, 0, 0);
+            hub.userData = { name: 'propeller' };
+            propGroup.add(hub);
+
+            // Blades
+            const bladeGeo = new THREE.BoxGeometry(0.08, 1.2, 0.15);
+            const blade1 = new THREE.Mesh(bladeGeo, propMat);
+            blade1.position.set(3.1, 0, 0);
+            blade1.userData = { name: 'propeller' };
+            propGroup.add(blade1);
+            parts.propeller = blade1;
+
+            const blade2 = new THREE.Mesh(bladeGeo, propMat);
+            blade2.rotation.x = Math.PI / 2;
+            blade2.position.set(3.1, 0, 0);
+            blade2.userData = { name: 'propeller' };
+            propGroup.add(blade2);
+
+            const bladeWire = new THREE.LineSegments(new THREE.EdgesGeometry(bladeGeo), wireMaterial);
+            bladeWire.position.copy(blade1.position);
+            propGroup.add(bladeWire);
+
+            aircraft.add(propGroup);
+
+            // ===== WINGS =====
+            const wingGroup = new THREE.Group();
+
+            // Wing shape (simplified airfoil)
+            function createWing(side) {
+                const wingGeo = new THREE.BoxGeometry(1.2, 0.12, 4);
+                const wing = new THREE.Mesh(wingGeo, wingMat);
+                wing.position.set(0.2, 0.55, side * 2.5);
+                wing.userData = { name: 'wing' };
+                return wing;
+            }
+
+            const leftWing = createWing(-1);
+            const rightWing = createWing(1);
+            wingGroup.add(leftWing);
+            wingGroup.add(rightWing);
+            parts.wing = leftWing;
+
+            // Wing tips
+            const tipGeo = new THREE.SphereGeometry(0.2, 8, 6);
+            const leftTip = new THREE.Mesh(tipGeo, wingMat);
+            leftTip.scale.set(2, 0.3, 0.8);
+            leftTip.position.set(0.2, 0.55, -4.6);
+            leftTip.userData = { name: 'wing' };
+            wingGroup.add(leftTip);
+
+            const rightTip = new THREE.Mesh(tipGeo, wingMat);
+            rightTip.scale.set(2, 0.3, 0.8);
+            rightTip.position.set(0.2, 0.55, 4.6);
+            rightTip.userData = { name: 'wing' };
+            wingGroup.add(rightTip);
+
+            // Leading edge
+            const leadGeo = new THREE.CylinderGeometry(0.06, 0.06, 4, 8);
+            const leftLead = new THREE.Mesh(leadGeo, wingMat);
+            leftLead.position.set(0.8, 0.55, -2.5);
+            leftLead.userData = { name: 'wing' };
+            wingGroup.add(leftLead);
+
+            const rightLead = new THREE.Mesh(leadGeo, wingMat);
+            rightLead.position.set(0.8, 0.55, 2.5);
+            rightLead.userData = { name: 'wing' };
+            wingGroup.add(rightLead);
+
+            // Wing wireframes
+            const wingWireGeo = new THREE.EdgesGeometry(new THREE.BoxGeometry(1.2, 0.12, 4));
+            const leftWingWire = new THREE.LineSegments(wingWireGeo, wireMaterial);
+            leftWingWire.position.copy(leftWing.position);
+            wingGroup.add(leftWingWire);
+
+            const rightWingWire = new THREE.LineSegments(wingWireGeo, wireMaterial);
+            rightWingWire.position.copy(rightWing.position);
+            wingGroup.add(rightWingWire);
+
+            // Ailerons (indicated by lines)
+            const aileronMat = new THREE.LineBasicMaterial({ color: 0xff6b6b });
+            const aileronGeo = new THREE.BufferGeometry().setFromPoints([
+                new THREE.Vector3(0, 0, 0),
+                new THREE.Vector3(0, 0, 1.5)
+            ]);
+            const leftAileron = new THREE.Line(aileronGeo, aileronMat);
+            leftAileron.position.set(-0.35, 0.55, -3.5);
+            leftAileron.userData = { name: 'wing' };
+            wingGroup.add(leftAileron);
+
+            const rightAileron = new THREE.Line(aileronGeo, aileronMat);
+            rightAileron.position.set(-0.35, 0.55, 2);
+            rightAileron.userData = { name: 'wing' };
+            wingGroup.add(rightAileron);
+
+            aircraft.add(wingGroup);
+
+            // ===== WING STRUTS =====
+            const strutGroup = new THREE.Group();
+
+            function createStrut(zPos) {
+                const strutGeo = new THREE.CylinderGeometry(0.03, 0.04, 1.8, 8);
+                const strut = new THREE.Mesh(strutGeo, strutMat);
+                strut.rotation.x = zPos > 0 ? -0.6 : 0.6;
+                strut.position.set(0.3, -0.2, zPos * 1.8);
+                strut.userData = { name: 'strut' };
+                return strut;
+            }
+
+            const leftStrut = createStrut(-1);
+            const rightStrut = createStrut(1);
+            strutGroup.add(leftStrut);
+            strutGroup.add(rightStrut);
+            parts.strut = leftStrut;
+
+            // Strut wireframes
+            const strutWireGeo = new THREE.EdgesGeometry(new THREE.CylinderGeometry(0.03, 0.04, 1.8, 8));
+            const leftStrutWire = new THREE.LineSegments(strutWireGeo, wireMaterial);
+            leftStrutWire.rotation.copy(leftStrut.rotation);
+            leftStrutWire.position.copy(leftStrut.position);
+            strutGroup.add(leftStrutWire);
+
+            const rightStrutWire = new THREE.LineSegments(strutWireGeo, wireMaterial);
+            rightStrutWire.rotation.copy(rightStrut.rotation);
+            rightStrutWire.position.copy(rightStrut.position);
+            strutGroup.add(rightStrutWire);
+
+            aircraft.add(strutGroup);
+
+            // ===== EMPENNAGE (TAIL) =====
+            const tailGroup = new THREE.Group();
+
+            // Horizontal stabilizer
+            const hStabGeo = new THREE.BoxGeometry(0.6, 0.06, 2.2);
+            const hStab = new THREE.Mesh(hStabGeo, tailMat);
+            hStab.position.set(-3.2, 0.1, 0);
+            hStab.userData = { name: 'tail' };
+            tailGroup.add(hStab);
+            parts.tail = hStab;
+
+            // Elevator
+            const elevatorGeo = new THREE.BoxGeometry(0.3, 0.05, 2.2);
+            const elevator = new THREE.Mesh(elevatorGeo, tailMat);
+            elevator.position.set(-3.5, 0.1, 0);
+            elevator.userData = { name: 'tail' };
+            tailGroup.add(elevator);
+
+            // Vertical stabilizer
+            const vStabGeo = new THREE.BoxGeometry(0.8, 1.2, 0.06);
+            const vStab = new THREE.Mesh(vStabGeo, tailMat);
+            vStab.position.set(-3.1, 0.7, 0);
+            vStab.userData = { name: 'tail' };
+            tailGroup.add(vStab);
+
+            // Rudder
+            const rudderGeo = new THREE.BoxGeometry(0.4, 1.1, 0.05);
+            const rudder = new THREE.Mesh(rudderGeo, tailMat);
+            rudder.position.set(-3.5, 0.65, 0);
+            rudder.userData = { name: 'tail' };
+            tailGroup.add(rudder);
+
+            // Tail wireframes
+            const hStabWire = new THREE.LineSegments(new THREE.EdgesGeometry(hStabGeo), wireMaterial);
+            hStabWire.position.copy(hStab.position);
+            tailGroup.add(hStabWire);
+
+            const vStabWire = new THREE.LineSegments(new THREE.EdgesGeometry(vStabGeo), wireMaterial);
+            vStabWire.position.copy(vStab.position);
+            tailGroup.add(vStabWire);
+
+            aircraft.add(tailGroup);
+
+            // ===== LANDING GEAR =====
+            const gearGroup = new THREE.Group();
+
+            // Nose gear
+            const noseGearGeo = new THREE.CylinderGeometry(0.03, 0.03, 0.7, 8);
+            const noseGear = new THREE.Mesh(noseGearGeo, gearMat);
+            noseGear.position.set(2, -0.7, 0);
+            noseGear.userData = { name: 'landinggear' };
+            gearGroup.add(noseGear);
+            parts.landinggear = noseGear;
+
+            // Nose wheel
+            const wheelGeo = new THREE.CylinderGeometry(0.15, 0.15, 0.08, 16);
+            const noseWheel = new THREE.Mesh(wheelGeo, gearMat);
+            noseWheel.rotation.x = Math.PI / 2;
+            noseWheel.position.set(2, -1.05, 0);
+            noseWheel.userData = { name: 'landinggear' };
+            gearGroup.add(noseWheel);
+
+            // Main gear legs (spring steel style)
+            function createMainGear(zPos) {
+                const mainGearGeo = new THREE.CylinderGeometry(0.04, 0.04, 1, 8);
+                const mainGear = new THREE.Mesh(mainGearGeo, gearMat);
+                mainGear.rotation.x = zPos > 0 ? 0.15 : -0.15;
+                mainGear.position.set(0.2, -0.9, zPos * 1);
+                mainGear.userData = { name: 'landinggear' };
+                return mainGear;
+            }
+
+            const leftMainGear = createMainGear(-1);
+            const rightMainGear = createMainGear(1);
+            gearGroup.add(leftMainGear);
+            gearGroup.add(rightMainGear);
+
+            // Main wheels
+            const mainWheelGeo = new THREE.CylinderGeometry(0.2, 0.2, 0.12, 16);
+            
+            const leftWheel = new THREE.Mesh(mainWheelGeo, gearMat);
+            leftWheel.rotation.x = Math.PI / 2;
+            leftWheel.position.set(0.2, -1.35, -1.1);
+            leftWheel.userData = { name: 'landinggear' };
+            gearGroup.add(leftWheel);
+
+            const rightWheel = new THREE.Mesh(mainWheelGeo, gearMat);
+            rightWheel.rotation.x = Math.PI / 2;
+            rightWheel.position.set(0.2, -1.35, 1.1);
+            rightWheel.userData = { name: 'landinggear' };
+            gearGroup.add(rightWheel);
+
+            // Wheel wireframes
+            const wheelWire = new THREE.LineSegments(new THREE.EdgesGeometry(mainWheelGeo), wireMaterial);
+            wheelWire.rotation.copy(leftWheel.rotation);
+            wheelWire.position.copy(leftWheel.position);
+            gearGroup.add(wheelWire);
+
+            aircraft.add(gearGroup);
+
+            // Position aircraft
+            aircraft.position.y = 0.5;
+            scene.add(aircraft);
+        }
+
+        function updateCamera() {
+            const x = cameraDistance * Math.sin(currentRotation.y) * Math.cos(currentRotation.x);
+            const y = cameraDistance * Math.sin(currentRotation.x) + 1;
+            const z = cameraDistance * Math.cos(currentRotation.y) * Math.cos(currentRotation.x);
+            camera.position.set(x, y, z);
+            camera.lookAt(0, 0.5, 0);
+        }
+
+        function onMouseDown(e) {
+            isRotating = true;
+            previousMousePosition = { x: e.clientX, y: e.clientY };
+        }
+
+        function onMouseMove(e) {
+            if (!isRotating) {
+                updateHover(e);
+                return;
+            }
+            const deltaX = e.clientX - previousMousePosition.x;
+            const deltaY = e.clientY - previousMousePosition.y;
+            currentRotation.y += deltaX * 0.01;
+            currentRotation.x += deltaY * 0.01;
+            currentRotation.x = Math.max(-Math.PI / 3, Math.min(Math.PI / 3, currentRotation.x));
+            updateCamera();
+            previousMousePosition = { x: e.clientX, y: e.clientY };
+        }
+
+        function onMouseUp() { isRotating = false; }
+
+        function onWheel(e) {
+            e.preventDefault();
+            cameraDistance += e.deltaY * 0.005;
+            cameraDistance = Math.max(4, Math.min(15, cameraDistance));
+            updateCamera();
+        }
+
+        let touchStartDistance = 0;
+        let lastTouchPosition = { x: 0, y: 0 };
+
+        function onTouchStart(e) {
+            if (e.touches.length === 1) {
+                isRotating = true;
+                lastTouchPosition = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+            } else if (e.touches.length === 2) {
+                isRotating = false;
+                touchStartDistance = Math.hypot(
+                    e.touches[0].clientX - e.touches[1].clientX,
+                    e.touches[0].clientY - e.touches[1].clientY
+                );
+            }
+        }
+
+        function onTouchMove(e) {
+            e.preventDefault();
+            if (e.touches.length === 1 && isRotating) {
+                const deltaX = e.touches[0].clientX - lastTouchPosition.x;
+                const deltaY = e.touches[0].clientY - lastTouchPosition.y;
+                currentRotation.y += deltaX * 0.01;
+                currentRotation.x += deltaY * 0.01;
+                currentRotation.x = Math.max(-Math.PI / 3, Math.min(Math.PI / 3, currentRotation.x));
+                updateCamera();
+                lastTouchPosition = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+            } else if (e.touches.length === 2) {
+                const currentDistance = Math.hypot(
+                    e.touches[0].clientX - e.touches[1].clientX,
+                    e.touches[0].clientY - e.touches[1].clientY
+                );
+                const delta = touchStartDistance - currentDistance;
+                cameraDistance += delta * 0.01;
+                cameraDistance = Math.max(4, Math.min(15, cameraDistance));
+                updateCamera();
+                touchStartDistance = currentDistance;
+            }
+        }
+
+        function onTouchEnd(e) { 
+            isRotating = false;
+            // Handle tap as click on mobile
+            if (e.changedTouches && e.changedTouches.length === 1) {
+                const touch = e.changedTouches[0];
+                handleClick(touch.clientX, touch.clientY);
+            }
+        }
+
+        function handleClick(clientX, clientY) {
+            const rect = renderer.domElement.getBoundingClientRect();
+            mouse.x = ((clientX - rect.left) / rect.width) * 2 - 1;
+            mouse.y = -((clientY - rect.top) / rect.height) * 2 + 1;
+
+            raycaster.setFromCamera(mouse, camera);
+            const intersects = raycaster.intersectObjects(scene.children, true);
+
+            for (let i = 0; i < intersects.length; i++) {
+                let obj = intersects[i].object;
+                // Check the object and its parents for userData
+                while (obj) {
+                    if (obj.userData && obj.userData.name && partsData[obj.userData.name]) {
+                        showInfo(obj.userData.name);
+                        return;
+                    }
+                    obj = obj.parent;
+                }
+            }
+        }
+
+        function updateHover(e) {
+            const rect = renderer.domElement.getBoundingClientRect();
+            mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+            mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+
+            raycaster.setFromCamera(mouse, camera);
+            const intersects = raycaster.intersectObjects(scene.children, true);
+            const label = document.getElementById('hoverLabel');
+
+            if (intersects.length > 0) {
+                const object = intersects[0].object;
+                if (object.userData && object.userData.name && partsData[object.userData.name]) {
+                    const data = partsData[object.userData.name];
+                    label.querySelector('h4').textContent = data.title;
+                    label.querySelector('p').textContent = 'Click for details';
+                    label.style.display = 'block';
+                    label.style.left = (e.clientX - rect.left + 15) + 'px';
+                    label.style.top = (e.clientY - rect.top + 15) + 'px';
+                    renderer.domElement.style.cursor = 'pointer';
+                    return;
+                }
+            }
+            label.style.display = 'none';
+            renderer.domElement.style.cursor = 'grab';
+        }
+
+        function onClick(e) {
+            handleClick(e.clientX, e.clientY);
+        }
+
+        function showInfo(partName) {
+            const data = partsData[partName];
+            if (!data) return;
+
+            document.getElementById('infoTitle').textContent = data.title;
+            document.getElementById('infoDescription').textContent = data.description;
+            document.getElementById('infoComponents').innerHTML = data.components.map(c => `<li>${c}</li>`).join('');
+            document.getElementById('infoHazards').innerHTML = data.hazards.map(h => `<li>${h}</li>`).join('');
+
+            document.getElementById('infoPanel').classList.add('active');
+
+            document.querySelectorAll('.legend-item').forEach(item => {
+                item.classList.remove('active');
+                if (item.dataset.part === partName) item.classList.add('active');
+            });
+
+            highlightPart(partName);
+        }
+
+        function highlightPart(partName) {
+            Object.values(parts).forEach(part => {
+                if (part.material) part.material.emissive = new THREE.Color(0x000000);
+            });
+            if (parts[partName] && parts[partName].material) {
+                parts[partName].material.emissive = new THREE.Color(0x4da6ff);
+                parts[partName].material.emissiveIntensity = 0.5;
+            }
+        }
+
+        function closeInfo() {
+            document.getElementById('infoPanel').classList.remove('active');
+            document.querySelectorAll('.legend-item').forEach(item => item.classList.remove('active'));
+            Object.values(parts).forEach(part => {
+                if (part.material) part.material.emissive = new THREE.Color(0x000000);
+            });
+        }
+
+        function resetView() {
+            currentRotation = { x: 0.25, y: 0.8 };
+            cameraDistance = 8;
+            updateCamera();
+        }
+
+        function onResize() {
+            const container = document.getElementById('canvas3d');
+            const width = container.clientWidth;
+            const height = container.clientHeight;
+            camera.aspect = width / height;
+            camera.updateProjectionMatrix();
+            renderer.setSize(width, height);
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            renderer.render(scene, camera);
+        }
+
+        init();
+        resetView();
+    </script>
+</body>
+</html>
